@@ -1,0 +1,46 @@
+# Defining task for simple calculator and identifying grade status
+
+DefineTask SimpleCalculator:
+    num1 = 20
+    num2 = 5
+   
+    # OPERATOR: Arithmetic operations
+    sum  = num1 + num2
+    difference = num1 - num2
+    product  = num1 * num2
+    quotient  = num1 / num2
+
+# Total
+DefineTask: TotalNumber
+    Input: sum, difference, product, quotient
+    Result: TotalNum
+   
+#Logical
+DefineTask: PassedFailed
+     IF ( TotalNum => 80 ) {
+        printResult: "Passed"
+     } ELSE { 
+        printResult: "Failed" 
+     }
+     
+     Input: sum, difference, product, quotient
+     Result: Status
+
+    # Display results using PrintResult
+    printResult: "Sum: " + sum;
+    printResult: "Difference: " + difference;
+    printResult: "Product: " + product;
+    printResult: "Quotient: " + quotient;
+    printResult: "Total: " + TotalNum;
+    printResult: Status
+EndTask
+
+# Defining task to check user activity
+DefineTask: CheckActivity
+        IF(!isActive) {
+            printResult: "Inactive"
+	} ELSE {
+	    printResult: "Active\n"
+    Input: _UserCount 
+    Result: Status
+EndTask

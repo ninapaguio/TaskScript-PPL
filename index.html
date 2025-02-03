@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/asset/Logo.png">
+    <title>TaskScript</title>
+</head>
+<body>
+    <img src="/asset/TaskScript.png" alt="TaskScript">
+    <form id="inputCodeForm">
+        <div class="container">
+            <div class="input-container">
+                <div class="code-area">
+                    <div class="lineNumbers" id="lineNumbers"></div>
+                    <textarea id="codeInput" placeholder="Write your code here..."></textarea>
+                </div>
+                <button type="submit" id="analyzeButton" onclick="saveToFile(event)">Download Code</button>
+                <button type="submit" id="analyzeButton" onclick="loadTable(event)">Analyze Code</button>
+            </div>
+            <div id="output"></div>
+        </div>
+    </form>
+    
+
+    <script>
+        const codeInput = document.getElementById('codeInput');
+        const lineNumbers = document.getElementById('lineNumbers');
+
+        // Functions for code text area logic
+        function updateLineNumbers() {
+            const lines = codeInput.value.split('\n').length;
+            lineNumbers.innerHTML = '';
+            for (let i = 1; i <= lines; i++) {
+                const lineNumber = document.createElement('div');
+                lineNumber.textContent = i;
+                lineNumbers.appendChild(lineNumber);
+            }
+        }
+
+        function syncScroll() {
+            lineNumbers.scrollTop = codeInput.scrollTop;
+        }
+
+        function adjustHeight() {
+            codeInput.style.height = '320'; // Reset the height to calculate actual scroll height
+            codeInput.style.height = Math.min(codeInput.scrollHeight, 380) + 'px'; // Limit to max height
+            lineNumbers.style.height = codeInput.style.height; // Sync lineNumbers height with textarea
+        }
+
+        codeInput.addEventListener('input', () => {
+            updateLineNumbers();
+            adjustHeight();
+        });
+
+        codeInput.addEventListener('scroll', syncScroll);
+
+        // Function to display symbol table
+        async function loadTable(event) {
+            if (event) event.preventDefault();
+
+            try {
+                // Read data from symbol table
+                const response = await fetch("symbolic_table.tks");
+                const text = await response.text();
+
+                console.log("File content:", text);  // Check if file has data
+                
+                const outputDiv = document.querySelector("#output");
+
+                // Don't update table if symbol table is empty
+                if (!text.trim()) {
+                    console.warn("Symbol table file is empty!");
+                    outputDiv.innerHTML = '<p>No tokens found.</p>';
+                    return;  
+                }
+
+                const lines = text.trim().split("\n");
+
+                // Create the table
+                let table = "<table><thead><tr><th>LEXEMES</th><th>TOKENS</th></tr></thead><tbody>";
+
+                for (let i = 1; i < lines.length; i++) { // Skip header row
+                    let line = lines[i].trim();
+                    
+                    // Regex to capture lexeme and token, ensuring "INVALID" is properly handled
+                    let match = line.match(/^(.*?)(\s+INVALID.*|\s+\S+)$/); 
+
+                    if (match) {
+                        let lexeme = match[1].trim();  // Everything before "INVALID" or last word
+                        let token = match[2].trim();   // The last word OR "INVALID" and beyond
+
+                        table += `<tr><td>${lexeme}</td><td>${token}</td></tr>`;
+                    }
+                }
+
+                table += "</tbody></table>";
+                outputDiv.innerHTML = table; // Insert table into the output div
+            } catch (error) {
+                console.error("Error loading file:", error);
+            }
+        }
+        // Function to download .tks file
+        function saveToFile() {
+            if(event) event.preventDefault();            
+            let fileName = "source";
+            let code = document.getElementById("codeInput").value;
+            let blob = new Blob([code], { type: "text/plain" });
+            let link = document.createElement("a");
+
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName + ".tks";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            analyze(fileName);
+        }
+
+        // Function to send a request and fetch result
+        function analyze(fileName) {
+            // Send the filename to the backend server via a POST request
+            fetch("http://localhost:3000/analyze", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ fileName: fileName })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    console.log("Analysis complete. Loading table...");
+                    return;
+                } else {
+                    console.error("Error during analysis:", result.error);
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error); // Handle any errors
+                return;
+            });
+        } 
+
+        // Initialize line numbers on page load 
+        updateLineNumbers();
+        adjustHeight();
+    </script>
+</body>
+</html>
