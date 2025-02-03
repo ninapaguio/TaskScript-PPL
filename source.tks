@@ -1,3 +1,5 @@
+# Sample TaskScript codes for lexical analysis
+
 # Defining task for simple calculator and identifying grade status
 
 DefineTask SimpleCalculator:
